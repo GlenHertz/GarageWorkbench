@@ -21,13 +21,17 @@ function gen_side_hole_templates(verbose=false)
      fname="wb_side_slots_template_vebose.svg"
    end
    Drawing(W, H, fname)
+   background("white")
    setline(1)
    sethue("black")
    p0 = Point(b, b)
    origin(p0)
    # outer edge:
-   o1 = O            # upper left of edge
-   o2 = Point(w, h)  # lower right of edge
+   o1 = Point(0, 0)  # upper left of edge
+   o2 = Point(w, 0)  # lower right of edge
+   o3 = Point(w, h)  # lower right of edge
+   o4 = Point(0, h)  # lower right of edge
+   outer = [o1, o2, o3, o4]
    k = Point(kr - kl, kr - kl)  # kerf
    kx = Point(k.x, 0)
    ky = Point(0, k.y)
@@ -44,19 +48,18 @@ function gen_side_hole_templates(verbose=false)
 	      sethue("red")
               setdash("dot")
               # outside edge:
-	      box(o1, o2, :path)
+              poly(outer, :stroke, close=true)
               # inside cut hole:
               newsubpath()
+              poly([p2, p3, p4, p1], :preservepath, close=false)
               arc2r(c1, p1, p2, :path)
-              line(p3)
-              line(p4)
               closepath()
               strokepath()
       end
    end
    newpath()
    # outside cut:
-   box(k, o2 + -k, :path)
+   poly(offsetpoly(outer, - (kr - kl)), :stroke, close=true)
    # inside cut hole:
    newsubpath()
    arc2r(c1, p1 + ky, p2 - ky, :path)
@@ -69,7 +72,7 @@ function gen_side_hole_templates(verbose=false)
    preview()
 end
 
-function gen_leg_template(verbose=false)
+function gen_leg_template(smooth_radius::Real=0.0, verbose=false)
    w = 36inch
    h = 27inch
    b = 0.5inch # pdf border
@@ -80,6 +83,7 @@ function gen_leg_template(verbose=false)
      fname="wb_leg_template_vebose.svg"
    end
    Drawing(W, H, fname)
+   background("white")
    setline(1)
    sethue("black")
    p0 = Point(b, b)
@@ -136,55 +140,32 @@ function gen_leg_template(verbose=false)
    _, p21 = intersection(pw26, p4, ph4, ph4w)
    _, p22 = intersection(pw26, p4, ph16, ph16w)
    _, p23 = intersection(pw14, p7, ph16, ph16w)
-   _, p1kerf = intersection(p1, p8, ph0f16, ph0f16w)
-   _, p2kerf = intersection(p2, p3, ph0f16, ph0f16w)
-   _, p3kerf = intersection(p2, p3, phf16, phf16w)
-   _, p4kerf = intersection(p4, p5, phf16, phf16w)
-   _, p7kerf = intersection(p6, p7, phf16, phf16w)
-   _, p8kerf = intersection(p1, p8, phf16, phf16w)
    outer = [p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p1]
    inner = [p20, p21, p22, p23]
-   k = Point(kr - kl, kr - kl)  # kerf
-   kx = Point(k.x, 0)
-   ky = Point(0, k.y)
    if verbose
       @layer begin
-              # Path without kerf adjustments
-              newpath()
-	      sethue("red")
-              setdash("dot")
-              # outside edge:
-              for p in outer
-                line(p)
-              end
-              # inside cut hole:
-              newsubpath()
-              for p in inner
-                line(p)
-              end
-              closepath()
-              strokepath()
+         setdash("dotted")
+         sethue("red")
+         poly(outer, :stroke, close=true)
+         poly(inner, :stroke, close=true)
       end
    end
-   outer = [p1kerf, p2kerf, p3kerf, p4kerf, p5, p6, p7kerf, p8kerf, p9, p10, p11, p12, p13, p14, p15, p16, p1kerf]
-   inner = [p20, p21, p22, p23]
-   newpath()
-   # outside edge:
-   for p in outer
-     line(p)
+   setdash("solid")
+   sethue("black")
+   offset_outer = offsetpoly(outer, -kr + kl)
+   offset_inner = offsetpoly(inner, +kr - kl)
+   if smooth_radius > -10
+      polysmooth(offset_outer, smooth_radius, :stroke)
+      polysmooth(offset_inner, smooth_radius, :stroke)
+   else
+      poly(offset_outer, :stroke, close=true)
+      poly(offset_inner, :stroke, close=true)
    end
-   # inside cut hole:
-   newsubpath()
-   for p in inner
-     line(p)
-   end
-   closepath()
-   strokepath()
+   
+
    finish()
    preview()
 end
-
-
 
 
 end # module
